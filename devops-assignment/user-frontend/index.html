@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notes</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f4f5f7;
+      color: #1f2328;
+    }
+
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    h1 { font-size: 1.5rem; margin: 1rem 0; }
+
+    form, .note {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    form { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    input, textarea, button {
+      font: inherit;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      width: 100%;
+    }
+
+    textarea { resize: vertical; min-height: 90px; }
+
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { opacity: 0.6; cursor: default; }
+
+    #error { color: #b42318; margin: 0; min-height: 1.2em; font-size: 0.9rem; }
+
+    #notes {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+      grid-template-columns: 1fr;
+    }
+
+    .note h3 { margin: 0 0 0.4rem; overflow-wrap: anywhere; }
+    .note p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .note small { display: block; margin-top: 0.6rem; color: #656d76; }
+
+    .empty { text-align: center; color: #656d76; }
+
+    @media (min-width: 700px) {
+      main { max-width: 900px; padding: 2rem; }
+      #notes { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>User</h1>
+    <h1>Notes</h1>
+
+    <form id="note-form">
+      <input id="title" placeholder="Title" required />
+      <textarea id="content" placeholder="Write something..."></textarea>
+      <button id="submit" type="submit">Add note</button>
+      <p id="error"></p>
+    </form>
+
+    <section id="notes"></section>
+  </main>
+
+  <script>
+    const API = "/api/notes";
+    const form = document.getElementById("note-form");
+    const titleEl = document.getElementById("title");
+    const contentEl = document.getElementById("content");
+    const submitBtn = document.getElementById("submit");
+    const errorEl = document.getElementById("error");
+    const notesEl = document.getElementById("notes");
+
+    async function loadNotes() {
+      try {
+        const res = await fetch(API);
+        if (!res.ok) throw new Error("Failed to load notes");
+        render(await res.json());
+      } catch (err) {
+        errorEl.textContent = err.message;
+      }
+    }
+
+    function render(notes) {
+      notesEl.innerHTML = "";
+
+      if (!notes.length) {
+        const p = document.createElement("p");
+        p.className = "empty";
+        p.textContent = "No notes yet.";
+        notesEl.appendChild(p);
+        return;
+      }
+
+      for (const n of notes) {
+        const card = document.createElement("article");
+        card.className = "note";
+
+        const h = document.createElement("h3");
+        h.textContent = n.title;
+
+        const p = document.createElement("p");
+        p.textContent = n.content || "";
+
+        const d = document.createElement("small");
+        d.textContent = new Date(n.createdAt).toLocaleString();
+
+        card.append(h, p, d);
+        notesEl.appendChild(card);
+      }
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: titleEl.value.trim(),
+            content: contentEl.value.trim(),
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to add note");
+        }
+        form.reset();
+        await loadNotes();
+      } catch (err) {
+        errorEl.textContent = err.message;
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    loadNotes();
+  </script>
+</body>
+</html>

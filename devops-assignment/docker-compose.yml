@@ -1,0 +1,47 @@
+services:
+  api:
+    build: ./api
+    depends_on:
+      - db
+
+  stats:
+    build: ./stats
+    depends_on:
+      - api
+    ports:
+      - "3001:3001"
+  db:
+    image: mongo:latest
+    volumes:
+      - mongo_data:/data/db
+
+  frontend:
+    image: caddy:latest
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./user-frontend/Caddyfile:/etc/caddy/Caddyfile
+      - ./user-frontend:/var/www/html
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+  
+  admin:
+    image: caddy:latest
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - ./admin/Caddyfile:/etc/caddy/Caddyfile
+      - ./admin:/var/www/html
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  mongo_data:
+  caddy_data:
+  caddy_config:
